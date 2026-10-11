@@ -66,9 +66,9 @@ CDN for prototypes only: pin an EXACT version in the URL (never `@latest` or a r
 
 - **GSAP: usable for client work.** Free, including the former paid plugins (SplitText, ScrollSmoother, MorphSVG, Flip...), commercial
   use covered by the standard license. Restrictions: do not remove or alter GSAP's notices; do not reverse engineer it to build a
-  competing product; do not use it inside a tool that lets end users build visual animations without code (a no-code animation or page
-  builder). It is not OSI open source (it is a custom license), so do not republish GSAP itself. The license does not address selling
-  templates or themes that bundle GSAP: ask the owner before doing that. Read https://gsap.com/standard-license before client delivery.
+  competing product; do not use it inside a tool that competes with Webflow's visual animation builder (a no-code tool that lets end users build
+  animations visually). It is not OSI open source (it is a custom license), so do not republish GSAP itself. Selling templates or
+  themes that bundle GSAP is not explicitly addressed: check with GreenSock/Webflow before doing that. Read https://gsap.com/standard-license before client delivery.
 - **Lenis: no strings.** MIT. Keep the license notice if you redistribute the library itself (the npm package carries it).
 - **React Bits: usable inside a website or product, NOT for reselling the components.** The repo license is "MIT + Commons Clause" with custom
   wording: you may use, copy and modify components as part of an application, website or product, including commercially, as long as you do

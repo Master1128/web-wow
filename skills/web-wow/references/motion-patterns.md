@@ -346,7 +346,7 @@ export function blurWords(el, { accent = -1 } = {}) {          // accent: index 
 The track holds two identical groups; moving `-50%` loops seamlessly.
 
 ```html
-<div class="marquee" aria-label="Partners">
+<div class="marquee" role="group" aria-label="Partners">
   <div class="marquee-track">
     <ul class="marquee-group"><li><img src="a.svg" alt="Partner A" width="120" height="32"></li></ul>
     <ul class="marquee-group" aria-hidden="true"><li><img src="a.svg" alt="" width="120" height="32"></li></ul>
@@ -514,7 +514,7 @@ void main() {
   vec2 ndc = clip.xy / clip.w;
   vec2 d = (ndc - uPointer) * vec2(uAspect, 1.);
   float dist = length(d);
-  float infl = smoothstep(uRadius, 0., dist) * uStrength * ia;        // 1 near the pointer, 0 far away
+  float infl = (1. - smoothstep(0., uRadius, dist)) * uStrength * ia;        // 1 near the pointer, 0 far away
   vec2 push = d / (dist + 1e-4) * infl * .17 * (.55 + aRand.z * .9);  // radial repel
   push += vec2(-d.y, d.x) / (dist + 1e-4) * infl * .075;              // small swirl
   push.x /= uAspect;
@@ -529,7 +529,7 @@ void main() {
 ```glsl
 uniform vec3 uColor; varying float vAlpha;
 void main() {
-  float a = smoothstep(1., .25, length(gl_PointCoord - .5) * 2.);
+  float a = 1. - smoothstep(.25, 1., length(gl_PointCoord - .5) * 2.);
   if (a < .01) discard;
   gl_FragColor = vec4(uColor, a * vAlpha);
 }
@@ -556,8 +556,17 @@ const stage = { target: 0, value: 0 };
 ScrollTrigger.create({ trigger: '#scroll-space', start: 'top top', end: 'bottom bottom', onUpdate: s => { stage.target = s.progress; } });
 
 let last = performance.now(), fpsEma = 60, prev = last, slow = 0, steps = 0, pixelRatio = Math.min(devicePixelRatio, isPhone ? 1.5 : 2);
+let raf = 0, onScreen = true;
+const canvas = renderer.domElement;
+function setRunning() {                                                          // render only while visible and the tab is active
+  const run = onScreen && !document.hidden;
+  if (run && !raf) { last = prev = performance.now(); raf = requestAnimationFrame(frame); }   // reset clocks so the pause is not counted as a slow frame
+  else if (!run && raf) { cancelAnimationFrame(raf); raf = 0; }
+}
+new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; setRunning(); }).observe(canvas);
+document.addEventListener('visibilitychange', setRunning);
 function frame(now) {
-  requestAnimationFrame(frame);
+  raf = requestAnimationFrame(frame);
   const dt = Math.min((now - last) / 1000, 0.05); last = now;
   stage.value += (stage.target - stage.value) * (1 - Math.exp(-dt * 4.2));      // frame-rate independent easing
   fpsEma += (1000 / Math.max(now - prev, 1) - fpsEma) * 0.05; prev = now;
@@ -568,8 +577,9 @@ function frame(now) {
   }
   // camera.position / uniforms from stage.value; renderer.render(scene, camera);
 }
-requestAnimationFrame(frame);
+setRunning();
 ```
+If the canvas is `position: fixed` behind a tall scroll space it is always intersecting, which is correct; the `document.hidden` guard still pauses it in background tabs.
 Overlay copy tied to the same scroll uses a scrubbed GSAP timeline on the same trigger (`scrub: 0.6`), with blur and opacity only.
 
 ## 17. Fitted type (every giant line fills its measure)
@@ -666,7 +676,7 @@ Rules: at most about 2s, skippable on the first pointer or key event, shown once
 ```js
 const seen = (() => { try { return sessionStorage.getItem('booted') === '1'; } catch { return false; } })();
 const force = new URLSearchParams(location.search).has('boot');
-if (reducedMotion() || (seen && !force)) { showDesktop(); }
+if (reducedMotion() || (seen && !force) || !window.gsap) { showDesktop(); }   // no GSAP (CDN failed) => reveal content immediately
 else {
   const tl = gsap.timeline({ onComplete: () => { showDesktop(); try { sessionStorage.setItem('booted', '1'); } catch {} } });
   tl.fromTo('.boot-grid', { opacity: 0 }, { opacity: 0.6, duration: 0.45 }, 0)
@@ -735,7 +745,7 @@ Phones: no dragging. Windows become cards in normal flow; secondary windows open
 ## 24. Terminal command resolution (typeable, accessible, simulated)
 
 ```js
-const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();   // accent- and case-insensitive
+const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();   // accent- and case-insensitive
 
 const COMMANDS = [
   { names: ['help', 'ayuda', '?'], run: () => print(HELP_LINES) },
@@ -750,12 +760,12 @@ const complete = raw => {                                         // Tab
   return hits.length === 1 ? hits[0] : raw;
 };
 
-const history = []; let hi = 0;
+const cmdHistory = []; let hi = 0;
 input.addEventListener('keydown', e => {
-  if (e.key === 'Enter') { const raw = input.value; history.push(raw); hi = history.length; run(raw); input.value = ''; }
+  if (e.key === 'Enter') { const raw = input.value; cmdHistory.push(raw); hi = cmdHistory.length; run(raw); input.value = ''; }
   else if (e.key === 'Tab') { e.preventDefault(); input.value = complete(input.value); }
-  else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(0, hi - 1); input.value = history[hi] ?? ''; }
-  else if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(history.length, hi + 1); input.value = history[hi] ?? ''; }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(0, hi - 1); input.value = cmdHistory[hi] ?? ''; }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(cmdHistory.length, hi + 1); input.value = cmdHistory[hi] ?? ''; }
 });
 document.addEventListener('keydown', e => {                       // "/" focuses the terminal when no field is active
   if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !e.metaKey && !e.ctrlKey) { e.preventDefault(); input.focus({ preventScroll: true }); }
@@ -841,7 +851,7 @@ where unsupported the drawer just appears. For a phone bottom sheet, swap `trans
 
 ```css
 .drawer {
-  margin: 0 0 0 auto; padding: 0; border: 0; height: 100dvh; max-height: none; width: min(480px, 100vw);
+  margin: 0 0 0 auto; padding: 0; border: 0; height: 100dvh; max-height: none; max-width: none; width: min(480px, 100vw);
   background: var(--surface); color: var(--text); overscroll-behavior: contain; transform: translateX(100%);
   transition: transform var(--dur-slow) var(--ease-out), overlay var(--dur-slow) allow-discrete, display var(--dur-slow) allow-discrete;
 }
@@ -851,7 +861,7 @@ where unsupported the drawer just appears. For a phone bottom sheet, swap `trans
   transition: opacity var(--dur-slow), overlay var(--dur-slow) allow-discrete, display var(--dur-slow) allow-discrete; }
 .drawer[open]::backdrop { opacity: 1; }
 @starting-style { .drawer[open]::backdrop { opacity: 0; } }
-.drawer-body { padding: 24px; }                                  /* padding lives here so backdrop clicks target the dialog itself */
+.drawer-body { padding: 24px; min-height: 100%; box-sizing: border-box; }   /* the body fills the whole panel, so only backdrop clicks hit the dialog itself */
 ```
 
 ```js
@@ -896,16 +906,21 @@ export function chart(root, data /* [{ label, value }] */) {
   const max = Math.max(...data.map(d => d.value)) * 1.1;
   const x = i => pad + (i / (data.length - 1)) * (W - pad * 2), y = v => H - pad - (v / max) * (H - pad * 2);
   line.setAttribute('d', data.map((d, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(d.value).toFixed(1)}`).join(' '));
-  let rect;
-  svg.addEventListener('pointerenter', () => { rect = svg.getBoundingClientRect(); root.dataset.hover = ''; });
+  const labels = data.map(d => `${d.label}: ${fmt.format(d.value)}`);
+  const widest = labels.reduce((a, b) => (b.length > a.length ? b : a), '');
+  let rect, tipW = 0;
+  svg.addEventListener('pointerenter', () => {                    // measure once per hover, never inside pointermove
+    rect = svg.getBoundingClientRect(); root.dataset.hover = '';
+    tip.textContent = widest; tipW = tip.offsetWidth;
+  });
   svg.addEventListener('pointerleave', () => { delete root.dataset.hover; });
   svg.addEventListener('pointermove', e => {
     if (!rect) return;
     const u = ((e.clientX - rect.left) / rect.width) * W;
     const i = Math.min(data.length - 1, Math.max(0, Math.round(((u - pad) / (W - pad * 2)) * (data.length - 1))));
     hair.setAttribute('x1', x(i)); hair.setAttribute('x2', x(i)); dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(data[i].value));
-    tip.textContent = `${data[i].label}: ${fmt.format(data[i].value)}`;
-    tip.style.transform = `translate(${Math.min((x(i) / W) * rect.width + 12, rect.width - tip.offsetWidth)}px, ${Math.max((y(data[i].value) / H) * rect.height - 36, 0)}px)`;
+    tip.textContent = labels[i];
+    tip.style.transform = `translate(${Math.min((x(i) / W) * rect.width + 12, rect.width - tipW)}px, ${Math.max((y(data[i].value) / H) * rect.height - 36, 0)}px)`;
   });
 }
 ```

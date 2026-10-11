@@ -48,7 +48,7 @@ or combine, build the winner, then loop on mobile QA before sharing a `noindex` 
 |---|---|
 | No `DESIGN.md` for the project | Create one from `references/design-md-template.md` before any pixel work |
 | User gave no direction | Run `references/workflow.md` end to end: 3 directions in parallel, then choose |
-| User already picked a direction | Skip to workflow step 4 (build) using the matching brief in `references/concept-briefs.md` |
+| User already picked a direction | Skip to workflow step 5 (build) using the matching brief in `references/concept-briefs.md` |
 | Existing site to improve | Audit first, keep IA and SEO, use a redesign/audit skill if installed; borrow only one signature moment |
 | Audience is mostly on phones (social traffic) | Design mobile first; budget half the QA time for 390x844 and 360x780 |
 | Brand has no logo SVG yet | Use the wordmark or a simple monogram; concept A (particles) needs outlined vector paths |
@@ -56,11 +56,14 @@ or combine, build the winner, then loop on mobile QA before sharing a `noindex` 
 
 ## Execution Steps
 
-1. **Intake.** Collect brand name, audience, one-sentence offer, palette, fonts, logo SVG (outlined paths), headline, services,
+Numbering matches `references/workflow.md` (steps 0 to 8).
+
+0. **Intake.** Collect brand name, audience, one-sentence offer, palette, fonts, logo SVG (outlined paths), headline, services,
    the one CTA, language(s), and what is real vs simulated. Ask only for what is missing.
-2. **DESIGN.md first.** Write or read it. Tokens as CSS variables come from it. See `references/design-md-template.md`.
-3. **Three directions in parallel.** Fill three briefs from `references/concept-briefs.md`, one sub-agent per direction, each in
-   its own folder (`concepts/<letter>-<slug>/index.html`), plus a small chooser page. Details: `references/workflow.md`.
+1. **DESIGN.md first.** Write or read it. Tokens as CSS variables come from it. See `references/design-md-template.md`.
+2. **Choose three directions.** Pick three visibly different briefs from `references/concept-briefs.md`.
+3. **Parallel prototypes.** One sub-agent per direction, each in its own folder (`concepts/<letter>-<slug>/index.html`),
+   plus a small chooser page. Details: `references/workflow.md`.
 4. **User picks or combines.** Record the decision: one primary direction, at most one borrowed moment from another.
 5. **Build.** Production structure, bundled and pinned libraries, self-hosted fonts, real copy, accessibility, static fallbacks.
    Snippets: `references/motion-patterns.md`. Libraries and licenses: `references/libraries.md`.

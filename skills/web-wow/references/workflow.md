@@ -1,6 +1,6 @@
 # Workflow: from brand to a reviewed preview link
 
-Eight steps. Steps 3 and 4 are where the method differs from "just build a site": you commission several
+Nine steps (0 to 8). Steps 3 and 4 are where the method differs from "just build a site": you commission several
 directions in parallel, the user compares real prototypes, and only then do you build one for real.
 
 ```
