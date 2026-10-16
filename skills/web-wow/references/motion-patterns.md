@@ -35,7 +35,7 @@ Contents: 0 prelude, 1 crossfade, 2 shared element, 3 dock, 4 blur focus, 5 coun
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+    transition: none !important; scroll-behavior: auto !important;   /* not 0.01ms: a 0.01ms transition still returns the OLD value from getComputedStyle once, which breaks fitted-type measurement (section 17) */
   }
 }
 ```
@@ -44,8 +44,12 @@ Contents: 0 prelude, 1 crossfade, 2 shared element, 3 dock, 4 blur focus, 5 coun
 // motion.js
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 export const finePointer = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
-// Put this in <head> so "hidden until revealed" styles only apply when JS runs:
-// <script>document.documentElement.classList.add('js')</script>
+// Put this in <head> so "hidden until revealed" styles only apply when JS runs, with a failsafe so a failed bundle never leaves content hidden:
+// <script>
+//   const h = document.documentElement; h.classList.add('js');
+//   setTimeout(() => { if (!h.hasAttribute('data-ready')) h.classList.remove('js'); }, 3000);
+// </script>
+// Your init code calls document.documentElement.setAttribute('data-ready', '') once libraries and observers are wired.
 ```
 
 ## 1. Crossfade between views
@@ -192,6 +196,8 @@ export function countUpOnView(root = document, opts) {
 ```
 
 ## 6. Stagger-in on scroll
+
+The `.js` gate is the one from section 0: if `data-ready` is not set within 3s the class is removed and every `.reveal` shows.
 
 ```css
 @media (prefers-reduced-motion: no-preference) {
@@ -406,6 +412,9 @@ Verdict colors (success/warning/danger) stay separate from the accent. Color mea
 ## 14. GSAP with `matchMedia` and a reduced-motion guard
 
 Everything created inside `mm.add` is reverted when the query stops matching, so under reduced motion the page is the static layout.
+The callback only runs while at least one condition matches. With `{ motion, wide }` alone it does NOT run on a phone with reduced motion (both false), so
+non-animated work that must always happen (fitting text, nav theme without animation) never executes. Add a catch-all condition such as
+`reduce: '(prefers-reduced-motion: reduce)'` and branch on it inside the handler.
 
 ```js
 import { gsap } from 'gsap';
@@ -587,6 +596,10 @@ Overlay copy tied to the same scroll uses a scrubbed GSAP timeline on the same t
 ```css
 [data-fit] { display: inline-block; white-space: nowrap; line-height: 0.85; }
 ```
+
+Gotchas found building direction C: (1) negative `margin-block` on stacked rows collapses between siblings unless the stack is `display: flex; flex-direction: column`;
+(2) a line ending in a comma or a `Q` descends below the baseline and touches the next line at line-height 0.8: give that row about `.06em` of extra `margin-bottom`
+and check it in a screenshot at 360, 390 and 1440 wide; (3) the fit must run after `document.fonts.ready` and with no transitions on `font-size`/`letter-spacing`.
 
 ```js
 export function fitText(el) {

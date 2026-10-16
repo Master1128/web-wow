@@ -83,7 +83,7 @@ CDN for prototypes only: pin an EXACT version in the URL (never `@latest` or a r
 
 ### (a) GSAP + ScrollTrigger with `gsap.matchMedia()` and a reduced-motion guard
 
-See `motion-patterns.md` section 14. Rules: branch on `conditions.*` inside the handler (it re-runs whenever any condition flips);
+See `motion-patterns.md` section 14. Rules: branch on `conditions.*` inside the handler (it re-runs whenever any condition flips) and include a `reduce` condition so the callback also runs for phone plus reduced motion;
 animate only `transform`/`opacity`/`filter`/`clip-path`; do not `scrub` on phones unless tested; call `ScrollTrigger.refresh()` after late layout
 changes (web fonts, lazy images). React: `useGSAP(() => {...}, { scope: ref })` from `@gsap/react`, with `matchMedia` inside it.
 
@@ -114,8 +114,9 @@ gsap.matchMedia().add('(prefers-reduced-motion: no-preference)', () => {
 ```
 
 Lenis facts:
-- Runs on native scroll: keyboard (Space, PageUp/Down, Home/End, arrows), `position: sticky` and browser find keep working.
-  Do not hijack keys, do not `preventDefault` wheel globally, no `scroll-behavior: smooth` in CSS alongside Lenis.
+- Scrolls the real document, so keyboard (Space, PageUp/Down, Home/End, arrows), `position: sticky` and browser find keep working. It does
+  intercept wheel events on desktop to smooth them: that is the accepted exception to the no-hijack rule. Do not hijack keys, do not add your own
+  wheel or `preventDefault` handlers, no `scroll-behavior: smooth` in CSS alongside Lenis.
 - `respectReducedMotion` defaults to `true` (smoothing off, programmatic scrolls instant). Do not set it to `false`. The wrapper above goes
   further: no Lenis instance at all under reduced motion.
 - Intro screens: call `lenis.stop()` until the intro finishes, then `lenis.start()` and `ScrollTrigger.refresh()`.
@@ -158,7 +159,7 @@ preserve nested links (use `aria: "none"` plus an `.sr-only` copy then).
 
 ```css
 @media (prefers-reduced-motion: no-preference) {
-  .js [data-split] { visibility: hidden; }   /* avoids a flash of unsplit text; JS reveals it. If the bundle fails the text stays hidden: keep the script critical and error-free */
+  .js [data-split] { visibility: hidden; }   /* avoids a flash of unsplit text; JS reveals it. The 3s failsafe from motion-patterns.md section 0 removes `.js` if init never sets data-ready */
 }
 ```
 
@@ -169,6 +170,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 gsap.registerPlugin(SplitText, ScrollTrigger);
 
 gsap.matchMedia().add('(prefers-reduced-motion: no-preference)', () => {
+  document.documentElement.setAttribute('data-ready', '');   // tells the head failsafe that init ran
   document.querySelectorAll('[data-split]').forEach(el => {
     gsap.set(el, { visibility: 'visible' });
     SplitText.create(el, {

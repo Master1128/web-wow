@@ -2,9 +2,12 @@
 name: web-wow
 description: "Trigger: web de $10K, web que impresione, landing que impresione, sitio wow, portfolio site, wow website, Awwwards-level, premium landing page, immersive 3D site, editorial giant typography, OS-style website, impressive prototype. Method for building three or more art-directed website prototypes in parallel, picking one, and shipping it with mobile QA: DESIGN.md first, concept briefs, motion patterns, GSAP/Lenis/Three.js, Playwright checks, noindex preview link."
 license: MIT
+compatibility: "Agent Skills format (SKILL.md plus references/ and scripts/); works in any agent that can read and write files. QA needs a shell with Node 20+ and a Chromium-based browser; prototypes load GSAP, Lenis and Three.js from a CDN. Parallel prototypes use sub-agents or background tasks when the agent has them, otherwise build sequentially."
 metadata:
   author: Rafael Chacón (@rafchn)
-  version: "1.0"
+  maintainer: "Master1128"
+  version: "1.2"
+  upstream: "https://github.com/RafChn/web-wow"
 ---
 
 ## Activation Contract
@@ -29,14 +32,17 @@ or combine, build the winner, then loop on mobile QA before sharing a `noindex` 
 
 - One idea per viewport. One signature moment per section. If removing an animation loses no meaning, remove it.
 - Color means something. One accent; success/warning/danger only as verdicts. The accent covers well under 5% of the surface.
-- Animate `transform`, `opacity` and `filter`. `clip-path` is paint-only: use it for one big wipe, never for many elements. Count-ups and typed text rewrite text, the only other exception. Never `transition: all`.
+- Animate `transform`, `opacity` and `filter`. `clip-path` is paint-only: use it for one big wipe (or the single skippable boot reveal), never for many elements. Count-ups and typed text rewrite text, the only other exception. Never `transition: all`.
 - Every motion honors `prefers-reduced-motion` and has a static equivalent that carries the same content.
 - Every pointer gesture (drag, hover-reveal, magnetic pull, custom cursor) has a tap/keyboard alternative. Custom cursors are
   allowed only when they are the concept, only for `(hover: hover) and (pointer: fine)`, and never hide the focus ring.
-- No scroll hijacking: no wheel/keys interception, no forced snap. Smooth scroll (Lenis) only on marketing/brand pages.
+- No scroll hijacking: no key interception, no forced snap, no scroll locks, touch stays native. Lenis is the one accepted exception for the
+  wheel (it smooths wheel input on desktop): only on marketing/brand pages, never under reduced motion, and never alongside your own wheel handlers.
 - No `window.addEventListener('scroll')` for animation. Use GSAP ScrollTrigger, IntersectionObserver or `animation-timeline`.
 - No layout reads inside pointer/scroll loops. Cache rects on `pointerenter`, batch writes in `requestAnimationFrame`.
 - Heavy dependencies (Three.js, GSAP) load lazily or after first paint, with a static fallback if they fail or time out.
+- Content hidden until JS reveals it needs a failsafe: if init has not marked the page ready within about 3s, drop the `.js` gate so everything shows
+  (`motion-patterns.md` section 0).
 - Never invent claims: no fake logos, testimonials, statistics, dashboards or "trusted by". Simulated data is labeled
   "simulation" in the UI. Placeholders for contact links are marked `TODO` in code and called out in the report.
 - Budget: LCP < 2.5s, CLS < 0.1, INP < 200ms on a mid-range phone. Self-host fonts for anything that ships.
@@ -47,7 +53,8 @@ or combine, build the winner, then loop on mobile QA before sharing a `noindex` 
 | Situation | Do |
 |---|---|
 | No `DESIGN.md` for the project | Create one from `references/design-md-template.md` before any pixel work |
-| User gave no direction | Run `references/workflow.md` end to end: 3 directions in parallel, then choose |
+| User gave no direction | Run `references/workflow.md` end to end: 3 directions in parallel, then choose. Three sub-agents is the costly path: say so in one line and offer fewer (one direction plus a variant) before launching |
+| User asks for "all the options" or "every direction" | The default trio is A, B, C. All six briefs (A to F) means six sub-agents: state the count and the cost before launching, and say which letters are extras (D, E, F) |
 | User already picked a direction | Skip to workflow step 5 (build) using the matching brief in `references/concept-briefs.md` |
 | Existing site to improve | Audit first, keep IA and SEO, use a redesign/audit skill if installed; borrow only one signature moment |
 | Audience is mostly on phones (social traffic) | Design mobile first; budget half the QA time for 390x844 and 360x780 |
@@ -62,7 +69,7 @@ Numbering matches `references/workflow.md` (steps 0 to 8).
    the one CTA, language(s), and what is real vs simulated. Ask only for what is missing.
 1. **DESIGN.md first.** Write or read it. Tokens as CSS variables come from it. See `references/design-md-template.md`.
 2. **Choose three directions.** Pick three visibly different briefs from `references/concept-briefs.md`.
-3. **Parallel prototypes.** One sub-agent per direction, each in its own folder (`concepts/<letter>-<slug>/index.html`),
+3. **Parallel prototypes.** One parallel worker per direction (a sub-agent, a background task or a separate session; if your agent cannot delegate, build them one after another), each in its own folder (`concepts/<letter>-<slug>/index.html`),
    plus a small chooser page. Details: `references/workflow.md`.
 4. **User picks or combines.** Record the decision: one primary direction, at most one borrowed moment from another.
 5. **Build.** Production structure, bundled and pinned libraries, self-hosted fonts, real copy, accessibility, static fallbacks.
@@ -83,7 +90,8 @@ Numbering matches `references/workflow.md` (steps 0 to 8).
 | Copy-paste motion and interaction code | `references/motion-patterns.md` |
 | GSAP, Lenis, React Bits, Three.js: versions, licenses, sync | `references/libraries.md` |
 | What makes a site feel expensive, anti-patterns, reference sites | `references/principles.md` |
-| Mobile and reduced-motion QA, Playwright commands and script | `references/mobile-qa.md` |
+| Mobile and reduced-motion QA, Playwright commands | `references/mobile-qa.md` |
+| Runnable headless mobile sweep (Node + Playwright) | `scripts/qa-sweep.mjs` |
 
 ## Optional companion skills (never vendored here)
 
@@ -94,10 +102,19 @@ Link and install commands are in the repo README. Read any third-party skill bef
 - Thermos / deslop, anti-slop: optional diff review for AI-slop in code.
 If a companion skill is not installed, follow `references/principles.md` and `references/mobile-qa.md` instead.
 
+## Agent portability
+
+This skill is plain Markdown plus one Node script. Nothing in it is tied to a vendor or to a specific tool name: use whatever your agent
+offers to read files, write files and run commands.
+- No delegation (sub-agents, background tasks)? Build the directions one after another in separate folders, or write each filled brief to
+  `concepts/<letter>-<slug>/BRIEF.md` and run it in a separate session. A brief file is a complete, agent-neutral handoff.
+- No image viewing? Keep the measurements, say the screenshots were not reviewed and ask the user to check on a phone.
+- No shell or browser? Write the files, hand the user the steps in `references/mobile-qa.md` and report nothing as verified.
+
 ## Output Contract
 
 Report, in this order: the one-line design read and the chosen direction; the signature moments built (by name); the viewports,
 color schemes and scroll positions actually screenshotted; QA findings fixed and any consciously waived; fallbacks in effect
 (no WebGL, reduced motion, no JS); every placeholder still open (contact links, copy, assets); the preview URL if one was
-deployed. Do not claim an effect works until it was seen in a screenshot or measured in a browser. Headless Playwright is the
+deployed. Say which screenshots were NOT individually read. Do not claim an effect works until it was seen in a screenshot or measured in a browser. Headless Playwright is the
 source of truth: `requestAnimationFrame` may not run in hidden preview panes.

@@ -4,13 +4,20 @@ Mobile is where "prototype that wows on a laptop" turns into "site that wows". B
 Sources of truth: headless Playwright screenshots and DOM measurements. Do not rely on a hidden or background preview pane:
 `requestAnimationFrame` may not run there, so animated or WebGL pages can look blank or frozen while being fine in a real browser.
 
+## Prerequisites
+
+Playwright needs a browser. If `npx playwright install chromium` was never run, use the installed Chrome: `PW_CHANNEL=chrome` for the sweep script and
+`chromium.launch({ channel: 'chrome' })` in your own scripts. Check this first; do not discover it halfway through the loop.
+
 ## The loop
 
 ```
 serve -> sweep screenshots (2 phones) -> READ every PNG -> fix -> re-sweep -> reduced-motion pass -> no-JS / no-WebGL pass -> done
 ```
 
-Read each image with your image-reading tool. A script cannot tell you a headline is half-clipped.
+Read each image with whatever your agent offers for viewing images. A script cannot tell you a headline is half-clipped.
+If your agent cannot view images, keep the measurements (overflow, tap targets, console errors, contrast), state in the report that the screenshots were
+NOT reviewed, and ask the user to open the preview on a phone.
 
 ## Viewports
 
@@ -104,66 +111,14 @@ saves a screenshot per step, checks `scrollWidth === innerWidth`, lists tap targ
 It does not replace reading the screenshots.
 
 ```bash
-node qa-sweep.mjs http://localhost:5173/ .shots            # normal pass
-node qa-sweep.mjs http://localhost:5173/ .shots --reduced  # reduced-motion pass
-PW_CHANNEL=chrome node qa-sweep.mjs http://localhost:5173/ .shots --wait=5000   # installed Chrome, longer intro wait
+# <skill-dir> = wherever your agent installed this skill (for example .agents/skills/web-wow, ~/.claude/skills/web-wow, ...)
+node <skill-dir>/scripts/qa-sweep.mjs http://localhost:5173/ .shots            # normal pass
+node <skill-dir>/scripts/qa-sweep.mjs http://localhost:5173/ .shots --reduced  # reduced-motion pass
+PW_CHANNEL=chrome node <skill-dir>/scripts/qa-sweep.mjs http://localhost:5173/ .shots --wait=5000   # installed Chrome, longer intro wait
 ```
 
-```js
-// qa-sweep.mjs: headless mobile sweep. Usage: node qa-sweep.mjs <url> [outDir] [--reduced] [--wait=3000]
-import { chromium } from 'playwright';
-import { mkdirSync } from 'node:fs';
-
-const args = process.argv.slice(2);
-const flags = Object.fromEntries(args.filter(a => a.startsWith('--')).map(a => { const [k, v = 'true'] = a.slice(2).split('='); return [k, v]; }));
-const [url = 'http://localhost:8080/', outDir = '.shots'] = args.filter(a => !a.startsWith('--'));
-const reduced = 'reduced' in flags;
-const introWait = Number(flags.wait ?? 3000);                       // let preloaders/intros finish
-const viewports = [{ name: '390x844', width: 390, height: 844 }, { name: '360x780', width: 360, height: 780 }];
-
-mkdirSync(outDir, { recursive: true });
-const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || undefined, args: ['--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });   // software WebGL in headless
-let problems = 0;
-const report = msg => { problems++; console.log('  PROBLEM: ' + msg); };
-
-for (const vp of viewports) {
-  console.log(`\n== ${vp.name}${reduced ? ' (reduced motion)' : ''} ==`);
-  const ctx = await browser.newContext({
-    viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
-    reducedMotion: reduced ? 'reduce' : 'no-preference',
-  });
-  const page = await ctx.newPage();
-  const messages = [];
-  page.on('console', m => { if (['error', 'warning'].includes(m.type())) messages.push(`${m.type()}: ${m.text()}`); });
-  page.on('pageerror', e => messages.push(`pageerror: ${e.message}`));
-  await page.goto(url, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(introWait);
-
-  const total = await page.evaluate(() => document.documentElement.scrollHeight);
-  const step = Math.round(vp.height * 0.25);
-  let i = 0;
-  for (let y = 0; y <= Math.max(0, total - vp.height); y += step, i++) {
-    await page.evaluate(v => window.scrollTo(0, v), y);
-    await page.waitForTimeout(450);                                  // let scrubbed timelines settle
-    const m = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth, y: Math.round(scrollY) }));
-    if (m.sw !== m.iw) report(`horizontal overflow at y=${m.y}: scrollWidth ${m.sw} != innerWidth ${m.iw}`);
-    await page.screenshot({ path: `${outDir}/${vp.name}${reduced ? '-reduced' : ''}-${String(i).padStart(3, '0')}.png` });
-  }
-
-  const small = await page.evaluate(() => [...document.querySelectorAll('a[href], button, input, select, textarea, [role="button"], summary')]
-    .filter(el => { const r = el.getBoundingClientRect(), cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; })
-    .filter(el => { const r = el.getBoundingClientRect(); return r.width < 44 || r.height < 44; })
-    .map(el => `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/)[0] : ''} ${Math.round(el.getBoundingClientRect().width)}x${Math.round(el.getBoundingClientRect().height)}`));
-  small.slice(0, 15).forEach(s => report(`tap target under 44px: ${s}`));
-
-  messages.forEach(m => report(`console ${m}`));
-  console.log(`  ${i} screenshots in ${outDir}, page height ${total}px`);
-  await ctx.close();
-}
-await browser.close();
-console.log(problems ? `\n${problems} problem(s). Read every PNG, fix, re-run.` : '\nNo automated problems. Still read every PNG.');
-process.exit(problems ? 1 : 0);
-```
+The script lives next to this file in the skill: `scripts/qa-sweep.mjs` (run it by its full path, from the project you are testing, so it finds that project's `playwright`).
+It prints `PROBLEM:` lines and exits 1 when it finds any. Use `node <skill-dir>/scripts/qa-sweep.mjs --help` for usage.
 
 Tips:
 - Raise `--wait` for long intros or preloaders; the sweep scrolls only after that delay.
@@ -177,4 +132,6 @@ Tips:
 ## Exit criteria
 
 Both phone viewports clean at every step, no console errors, reduced-motion pass shows no animation and the same content, fallbacks verified,
-and a human has looked at every screenshot of the hero, the signature moments and the CTA.
+and a human has looked at every screenshot of the hero, the signature moments and the CTA. If you did not open some PNGs (for example the second phone
+or the reduced-motion sweep), say exactly which ones in the report instead of implying full coverage. Also shoot the transition windows of any scroll scene
+(just before and just after a state change), because labels and captions that fade in late look broken there while the end states look fine.

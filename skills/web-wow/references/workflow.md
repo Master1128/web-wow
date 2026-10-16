@@ -39,6 +39,9 @@ that violates a hard constraint (for example B if the user dislikes interfaces t
 
 ## 3. Parallel prototypes (one sub-agent each)
 
+"Sub-agent" here means any isolated worker: a delegated sub-agent, a background task, or a separate session of any agent. A handoff that works
+everywhere: save each filled brief (the text below) as `concepts/<letter>-<slug>/BRIEF.md`, so a worker can be started with "read BRIEF.md and build it".
+
 Launch one sub-agent per direction, concurrently, each with its own isolated folder. Single writer per folder.
 
 ```
@@ -55,7 +58,7 @@ project/
 Each sub-agent prompt must be self-contained. Include, in this order:
 
 1. Role and goal: "Build one single-file prototype of direction X for {BRAND}. Output only inside `concepts/<folder>/`."
-2. The filled brief from `concept-briefs.md` (not a link: paste it).
+2. The filled brief from `concept-briefs.md` (paste it, or point the agent at a shared brief file in the project that it must read first; one shared file avoids repeating the same text in every prompt).
 3. The full `DESIGN.md` text (not a path: the agent starts with an empty context).
 4. The shared constraints block from `concept-briefs.md` (performance, accessibility, honesty, fallbacks).
 5. Library policy: exact pinned versions from `libraries.md`, loaded from a CDN for prototypes only.

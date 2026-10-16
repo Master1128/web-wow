@@ -1,6 +1,8 @@
 # web-wow
 
-Skill para Claude Code (y agentes compatibles) que enseña el método usado para construir tres prototipos de sitios web que "parecen de 10 mil dólares": primero se define la marca, luego se piden varias direcciones de arte en paralelo, la persona elige o combina, y solo después se construye y se revisa en el teléfono.
+> Versión mantenida por [Master1128](https://github.com/Master1128), bifurcada de [RafChn/web-wow](https://github.com/RafChn/web-wow) (Rafael Chacón, MIT). Qué cambió: [`CHANGELOG.md`](CHANGELOG.md).
+
+Skill en el formato abierto [Agent Skills](https://agentskills.io/specification) para cualquier agente de código con IA (Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode y otros que lean `SKILL.md`) que enseña el método usado para construir tres prototipos de sitios web que "parecen de 10 mil dólares": primero se define la marca, luego se piden varias direcciones de arte en paralelo, la persona elige o combina, y solo después se construye y se revisa en el teléfono.
 
 [Español](#español) · [English](#english)
 
@@ -33,36 +35,51 @@ Demostración en vivo: https://rafchn-propuestas.vercel.app (los botones de cont
 
 ### Instalación
 
-Copia la carpeta `skills/web-wow/` donde tu agente busque skills.
+`web-wow` es una carpeta (`skills/web-wow/`) con `SKILL.md`, `references/` y `scripts/`, tal como define el formato [Agent Skills](https://agentskills.io/specification). Cualquier agente que lea ese formato la carga; solo cambia la carpeta donde la busca.
 
-Alcance de usuario (todos tus proyectos):
+Estado de las pruebas: el flujo completo se ha usado en Claude Code. Para los demás agentes la compatibilidad es por formato (no se ha probado aquí en cada uno): si algo no funciona en el tuyo, abre un issue.
+
+**Opción 1: instalador multiagente** (lee el contenido antes de instalar y no uses `-y`, así el CLI pregunta antes de escribir en tu configuración):
 
 ```bash
-mkdir -p ~/.claude/skills
-cp -r skills/web-wow ~/.claude/skills/
+npx skills add Master1128/web-wow                              # pregunta en qué agentes instalar
+npx skills add Master1128/web-wow -g -a claude-code -a codex   # global, agentes concretos
+```
+
+El CLI [`skills`](https://github.com/vercel-labs/skills) conoce la carpeta de cada agente (más de 70); su README tiene la lista vigente.
+
+**Opción 2: copiar la carpeta.** Rutas según el README de ese CLI (verifícalas en la documentación de tu agente: cambian entre versiones):
+
+| Agente | Proyecto | Global |
+|---|---|---|
+| Claude Code | `.claude/skills/` | `~/.claude/skills/` |
+| Codex | `.agents/skills/` | `~/.agents/skills/` |
+| Cursor | `.agents/skills/` | `~/.cursor/skills/` |
+| Gemini CLI | `.agents/skills/` | `~/.gemini/skills/` |
+| GitHub Copilot | `.agents/skills/` | `~/.copilot/skills/` |
+| OpenCode | `.agents/skills/` | `~/.config/opencode/skills/` |
+| Otros (Cline, Zed, Warp, Amp...) | `.agents/skills/` | `~/.agents/skills/` o `~/.config/agents/skills/` |
+
+```bash
+# proyecto (ruta universal .agents/skills/; cambia la ruta según tu agente)
+mkdir -p .agents/skills && cp -r skills/web-wow .agents/skills/
+
+# usuario, ejemplo con Claude Code
+mkdir -p ~/.claude/skills && cp -r skills/web-wow ~/.claude/skills/
 ```
 
 En Windows con PowerShell:
 
 ```powershell
-New-Item -ItemType Directory -Force "$HOME\.claude\skills" | Out-Null
-Copy-Item -Recurse skills\web-wow "$HOME\.claude\skills\"
+New-Item -ItemType Directory -Force ".agents\skills" | Out-Null
+Copy-Item -Recurse skills\web-wow ".agents\skills\"
 ```
 
-Alcance de proyecto (solo ese repositorio):
+**Opción 3: agente sin soporte de skills.** Deja el repositorio en tu proyecto y añade esto a las instrucciones del agente (`AGENTS.md`, `CLAUDE.md`, reglas del editor...). Este repo trae un [`AGENTS.md`](AGENTS.md) listo para copiar:
 
-```bash
-mkdir -p .claude/skills
-cp -r skills/web-wow .claude/skills/
-```
+> Cuando pidan una web que impresione, lee `skills/web-wow/SKILL.md` y sigue su flujo. Carga los archivos de `references/` solo cuando los necesites.
 
-Alternativa con el CLI de skills, que funciona con repositorios de skills:
-
-```bash
-npx skills add RafChn/web-wow
-```
-
-Revisa el contenido antes de instalar y no uses `-y` (así el CLI te pregunta antes de escribir en tu configuración). Esto aplica a esta skill y a cualquier otra.
+Requisitos opcionales para el QA móvil: Node 20+ y un navegador basado en Chromium (`scripts/qa-sweep.mjs`, ver `skills/web-wow/references/mobile-qa.md`). Sin eso la skill funciona igual, pero el agente no podrá verificar capturas.
 
 ### Uso
 
@@ -102,11 +119,15 @@ Notas de seguridad:
 ```
 web-wow/
 ├── README.md
+├── AGENTS.md                    instrucciones para agentes sin soporte de skills
+├── CHANGELOG.md
 ├── LICENSE
 ├── skills/web-wow/
 │   ├── SKILL.md
+│   ├── scripts/
+│   │   └── qa-sweep.mjs         barrido móvil headless (Node + Playwright)
 │   └── references/
-│       ├── workflow.md          flujo de 8 pasos y prompts para sub-agentes
+│       ├── workflow.md          flujo de 9 pasos (0 a 8) y prompts para sub-agentes
 │       ├── concept-briefs.md    6 briefs con marcadores
 │       ├── design-md-template.md
 │       ├── motion-patterns.md   código de movimiento e interacción
@@ -119,6 +140,7 @@ web-wow/
 ### Créditos
 
 - Método y prototipos: Rafael Chacón (@rafchn en Instagram).
+- Esta versión (compatibilidad multiagente, script de QA, correcciones): Master1128, con ayuda de Claude. Detalle en [`CHANGELOG.md`](CHANGELOG.md). El repositorio original sigue siendo de Rafael Chacón.
 - Librerías mencionadas: GSAP (GreenSock/Webflow), Lenis (Darkroom Engineering), React Bits (DavidHDev), Three.js (mrdoob y colaboradores).
 - Skills y herramientas recomendadas: Taste Skill (Leonxlnx), agent-skills (Vercel Labs), Playwright CLI (Microsoft), Thermos/deslop (Cursor), anti-slop (dmmulroy).
 - Las observaciones de sitios de referencia son juicios del autor sobre páginas públicas, del 2026-10-11; los sitios cambian.
@@ -148,8 +170,24 @@ Live demo: https://rafchn-propuestas.vercel.app (contact buttons are placeholder
 
 ### Install
 
-Copy `skills/web-wow/` into `~/.claude/skills/` (user scope) or `<project>/.claude/skills/` (project scope), as in the commands above.
-`npx skills add RafChn/web-wow` also works for skills repositories, but review the contents first and avoid `-y` so the CLI asks before changing your setup.
+`web-wow` is a folder (`skills/web-wow/`) with `SKILL.md`, `references/` and `scripts/`, as defined by the open [Agent Skills](https://agentskills.io/specification) format. Any agent that reads that format can load it; only the folder it looks in differs.
+
+Testing status: the full workflow has been used in Claude Code. For other agents, compatibility is by format (not tested here on each one): open an issue if something fails in yours.
+
+**Option 1, multi-agent installer** (read the contents first and avoid `-y` so the CLI asks before changing your setup):
+
+```bash
+npx skills add Master1128/web-wow                              # asks which agents to install for
+npx skills add Master1128/web-wow -g -a claude-code -a codex   # global, specific agents
+```
+
+The [`skills`](https://github.com/vercel-labs/skills) CLI knows each agent's folder (70+); its README has the current list.
+
+**Option 2, copy the folder.** Paths as listed in that CLI's README (verify against your agent's docs, they change between versions): Claude Code `.claude/skills/` (project) and `~/.claude/skills/` (global); Codex `.agents/skills/` and `~/.agents/skills/`; Cursor `.agents/skills/` and `~/.cursor/skills/`; Gemini CLI `.agents/skills/` and `~/.gemini/skills/`; GitHub Copilot `.agents/skills/` and `~/.copilot/skills/`; OpenCode `.agents/skills/` and `~/.config/opencode/skills/`; many others use `.agents/skills/`. Example: `mkdir -p .agents/skills && cp -r skills/web-wow .agents/skills/`.
+
+**Option 3, agent without skills support.** Keep the repo in your project and add this to the agent's instructions (`AGENTS.md`, `CLAUDE.md`, editor rules...). The repo ships a ready-to-copy [`AGENTS.md`](AGENTS.md): "When asked for an impressive website, read `skills/web-wow/SKILL.md` and follow its workflow; load `references/` files only when needed."
+
+Optional for mobile QA: Node 20+ and a Chromium-based browser (`scripts/qa-sweep.mjs`). Without them the skill still works, but the agent cannot verify screenshots.
 
 ### Usage
 
@@ -171,7 +209,7 @@ Security: read any third-party skill before installing it (it is instructions yo
 
 ### Credits
 
-Method and prototypes by Rafael Chacón (@rafchn on Instagram). Libraries: GSAP (GreenSock/Webflow), Lenis (Darkroom Engineering), React Bits (DavidHDev), Three.js (mrdoob and contributors). Recommended skills and tools: Taste Skill (Leonxlnx), agent-skills (Vercel Labs), Playwright CLI (Microsoft), Thermos/deslop (Cursor), anti-slop (dmmulroy). Reference-site notes are the author's opinions on public pages as of 2026-10-11.
+Method and prototypes by Rafael Chacón (@rafchn on Instagram). This version (multi-agent compatibility, QA script, fixes) by Master1128, with help from Claude; see [`CHANGELOG.md`](CHANGELOG.md). The original repository remains Rafael Chacón's. Libraries: GSAP (GreenSock/Webflow), Lenis (Darkroom Engineering), React Bits (DavidHDev), Three.js (mrdoob and contributors). Recommended skills and tools: Taste Skill (Leonxlnx), agent-skills (Vercel Labs), Playwright CLI (Microsoft), Thermos/deslop (Cursor), anti-slop (dmmulroy). Reference-site notes are the author's opinions on public pages as of 2026-10-11.
 
 ### License
 
